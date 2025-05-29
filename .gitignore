@@ -62,3 +62,44 @@ storybook-static/
 venv/
 ENV/
 env/
+/test
+test.html
+backend_test.py
+
+# Python cache and environment
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+.env.*
+venv/
+ENV/
+env/
+
+# FastAPI/Starlette
+instance/
+*.db
+
+# VS Code settings (already present)
+.vscode/
+
+# OS files (already present)
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test output
+htmlcov/
+coverage.xml
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Node.js (already present)
+node_modules/
+dist/
+build/
+.cache/

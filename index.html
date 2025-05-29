@@ -177,6 +177,89 @@
             .container { padding: 20px 15px; margin: 20px 10px; }
             #chatInput { width: calc(60% - 5px); }
         }
+
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background: linear-gradient(135deg, #2D3748 0%, #1A202C 100%); /* Darker gradient */
+            color: #E2E8F0; /* Light grey text */
+        }
+        body.dark-mode .container {
+            background: #2D3748; /* Dark grey container */
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); /* Darker shadow */
+            color: #E2E8F0;
+        }
+        body.dark-mode .header {
+            color: #90CDF4; /* Lighter blue for header */
+        }
+        body.dark-mode .subtitle {
+            color: #A0AEC0; /* Lighter grey for subtitle */
+        }
+        body.dark-mode label {
+            color: #CBD5E0; /* Slightly lighter grey for labels */
+        }
+        body.dark-mode input, 
+        body.dark-mode select, 
+        body.dark-mode textarea {
+            background: #1A202C; /* Very dark input background */
+            border: 1px solid #4A5568; /* Grey border */
+            color: #E2E8F0; /* Light text in inputs */
+        }
+        body.dark-mode input::placeholder,
+        body.dark-mode textarea::placeholder {
+            color: #718096; /* Muted placeholder text */
+        }
+        /* Buttons in dark mode might need more specific overrides if gradients are an issue */
+        /* For now, let's assume the default button style with white text is acceptable, or invert */
+        /* You might want to adjust button gradients or use solid colors for dark mode */
+        /* Example: background: #4A5568; color: #E2E8F0; */
+        /* Keeping existing gradients for now, but text is white, which is good */
+         body.dark-mode #clearStorageBtn { /* Specific override for clear button */
+            background: #c53030; /* Darker red */
+            color: white;
+        }
+        body.dark-mode #clearStorageBtn:hover {
+            background: #9b2c2c;
+        }
+        body.dark-mode .workflow-preview {
+            background: #1A202C; /* Dark background for preview */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            color: #CBD5E0;
+        }
+        body.dark-mode .step {
+            border-bottom: 1px solid #4A5568; /* Darker border for steps */
+        }
+        body.dark-mode .step-title {
+            color: #90CDF4; /* Lighter blue for step titles */
+        }
+        body.dark-mode .coach-mode {
+            background: #252E3C; /* Slightly lighter dark for coach mode */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            color: #CBD5E0;
+        }
+        /* Removed empty ruleset for body.dark-mode .coach-btn as it is not needed */
+        body.dark-mode #chatMessages {
+            background: #1A202C;
+            border: 1px solid #4A5568;
+            color: #E2E8F0;
+        }
+        body.dark-mode #chatInput {
+            background: #2D3748;
+            border: 1px solid #4A5568;
+            color: #E2E8F0;
+        }
+        body.dark-mode .loading {
+            color: #90CDF4;
+        }
+        body.dark-mode .editable[contenteditable="true"] {
+            background-color: #374151; /* Darker highlight for editing */
+            border: 1px dashed #60A5FA;
+        }
+        /* Dark mode toggle button itself */
+        body.dark-mode #darkModeToggle {
+            background: #4A5568;
+            color: #E2E8F0;
+            border: 1px solid #718096;
+        }
     </style>
 </head>
 <body>
@@ -185,6 +268,7 @@
             <h1>WorkFlows</h1>
         </div>
         <div class="subtitle">AI-Powered Project Planning & Coaching</div>
+        <button id="darkModeToggle" style="position: absolute; top: 20px; right: 20px; padding: 8px 12px; font-size: 12px; border-radius: 20px; background: #e2e8f0; color: #2d3748; border: 1px solid #cbd5e0; cursor: pointer;">🌙 Toggle Theme</button>
         <div id="inputSection">
             <label for="goal">What's your goal?</label>
             <textarea id="goal" rows="2" placeholder="e.g., Launch an Etsy store"></textarea>
@@ -249,6 +333,38 @@
     let currentlyEditingStep = null;
     const backendBaseUrl = "https://workflows2.onrender.com"; // Your Render backend URL
     // const backendBaseUrl = "http://localhost:8000"; // Uncomment for local development
+
+    // --- DARK MODE TOGGLE ---
+    const darkModeToggle = document.getElementById('darkModeToggle');
+
+    // Function to set the theme
+    function setTheme(isDark) {
+        if (isDark) {
+            document.body.classList.add('dark-mode');
+            darkModeToggle.textContent = '☀️ Light Mode';
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.body.classList.remove('dark-mode');
+            darkModeToggle.textContent = '🌙 Dark Mode';
+            localStorage.setItem('theme', 'light');
+        }
+    }
+
+    // Event listener for the toggle
+    darkModeToggle.addEventListener('click', () => {
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        setTheme(!isDarkMode); // Toggle the theme
+    });
+
+    // Function to apply saved theme on load
+    function applySavedTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            setTheme(true);
+        } else {
+            setTheme(false); // Default to light if no preference or 'light'
+        }
+    }
 
     // +++ HELPER FUNCTION TO MANAGE THE CLEAR STORAGE BUTTON +++
     function manageClearStorageButton() {
