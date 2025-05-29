@@ -248,6 +248,8 @@
         let currentStepIndex = 0;
         let currentlyEditingStep = null;
 
+        const backendBaseUrl = "https://workflows2.onrender.com";
+
         // --- MARKDOWN TO HTML ---
         function markdownToHtml(text) {
             if (!text) return "";
@@ -275,11 +277,11 @@
             
             try {
                 const backendBaseUrl = "https://workflows2.onrender.com";
-                const res = await fetch("http://localhost:8000/generate-workflow", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ goal, role, region })
-                });
+                const res = await fetch(`${backendBaseUrl}/generate-workflow`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ goal, role, region })
+              });
                 if (!res.ok) {
                     const errorData = await res.json();
                     throw new Error(errorData.detail?.error || `HTTP error! Status: ${res.status}`);
@@ -609,8 +611,7 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
             try {
-                const backendBaseUrl = "https://workflows2.onrender.com";
-                const res = await fetch("http://localhost:8000/coach-chat", {
+                const res = await fetch(`${backendBaseUrl}/generate-workflow`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ user_message: message, step_context: context })
