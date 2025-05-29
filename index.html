@@ -243,293 +243,127 @@
         </div>
     </div>
     <script>
-        // --- GLOBAL STATE ---
-        let workflowData = null; // { workflowTitle: "...", steps: [...], total_estimated_cost: "...", summary: "..." }
-        let currentStepIndex = 0;
-        let currentlyEditingStep = null;
+    // --- GLOBAL STATE ---
+    let workflowData = null; // { workflowTitle: "...", steps: [...], total_estimated_cost: "...", summary: "..." }
+    let currentStepIndex = 0;
+    let currentlyEditingStep = null;
+    const backendBaseUrl = "https://workflows2.onrender.com"; // Your Render backend URL
+    // const backendBaseUrl = "http://localhost:8000"; // Uncomment for local development
 
-        const backendBaseUrl = "https://workflows2.onrender.com";
+    // +++ HELPER FUNCTION TO MANAGE THE CLEAR STORAGE BUTTON +++
+    function manageClearStorageButton() {
+        const inputSection = document.getElementById('inputSection');
+        let clearBtn = document.getElementById('clearStorageBtn');
+        const hasSavedData = localStorage.getItem('workflowApp_workflowData');
 
-        // --- MARKDOWN TO HTML ---
-        function markdownToHtml(text) {
-            if (!text) return "";
-            // Simple link conversion for now. For more complex markdown, a library would be better.
-            text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
-            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');       // Italics
-            return text;
-        }
-
-        // --- GENERATE WORKFLOW ---
-        async function onGenerate() {
-            const goal = document.getElementById('goal').value.trim();
-            const role = document.getElementById('role').value;
-            const region = document.getElementById('region').value.trim();
-            if (!goal) {
-                alert("Please enter your goal.");
-                return;
+        if (hasSavedData) {
+            if (!clearBtn) { // If button doesn't exist, create and append it
+                clearBtn = document.createElement('button');
+                clearBtn.id = 'clearStorageBtn';
+                clearBtn.textContent = 'Clear Saved & Start New';
+                clearBtn.style.marginTop = "15px"; // Added some margin for better spacing
+                clearBtn.onclick = () => {
+                    if (confirm("Are you sure you want to clear your saved workflow and start over?")) {
+                        localStorage.removeItem('workflowApp_workflowData');
+                        localStorage.removeItem('workflowApp_currentStepIndex');
+                        workflowData = null;
+                        currentStepIndex = 0;
+                        document.getElementById('workflowPreview').innerHTML = '';
+                        document.getElementById('workflowPreview').classList.add('hidden');
+                        document.getElementById('coachModeBtn').classList.add('hidden');
+                        document.getElementById('downloadButtons').classList.add('hidden');
+                        document.getElementById('coachMode').classList.add('hidden');
+                        document.getElementById('goal').value = '';
+                        document.getElementById('region').value = '';
+                        alert('Cleared saved workflow.');
+                        if (clearBtn) clearBtn.remove(); // Remove the button itself
+                    }
+                };
+                if (inputSection) {
+                    inputSection.appendChild(clearBtn);
+                }
             }
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('workflowPreview').classList.add('hidden');
-            document.getElementById('coachModeBtn').classList.add('hidden');
-            document.getElementById('downloadButtons').classList.add('hidden');
-            document.getElementById('coachMode').classList.add('hidden');
-            
-            try {
-                const res = await fetch(`${backendBaseUrl}/generate-workflow`, {
+        } else {
+            if (clearBtn) { // If button exists but no data, remove it
+                clearBtn.remove();
+            }
+        }
+    }
+
+    // --- MARKDOWN TO HTML ---
+    function markdownToHtml(text) {
+        if (!text) return "";
+        text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        return text;
+    }
+
+    // --- GENERATE WORKFLOW ---
+    async function onGenerate() {
+        const goal = document.getElementById('goal').value.trim();
+        const role = document.getElementById('role').value;
+        const region = document.getElementById('region').value.trim();
+        if (!goal) {
+            alert("Please enter your goal.");
+            return;
+        }
+        document.getElementById('loading').classList.remove('hidden');
+        document.getElementById('workflowPreview').classList.add('hidden');
+        document.getElementById('coachModeBtn').classList.add('hidden');
+        document.getElementById('downloadButtons').classList.add('hidden');
+        document.getElementById('coachMode').classList.add('hidden');
+        
+        try {
+            const res = await fetch(`${backendBaseUrl}/generate-workflow`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ goal, role, region })
-              });
-                if (!res.ok) {
-                    const errorData = await res.json();
-                    throw new Error(errorData.detail?.error || `HTTP error! Status: ${res.status}`);
-                }
-                const data = await res.json();
-                
-                workflowData = data;
-                currentStepIndex = 0;
-                // Ensure 'completed' status is initialized for steps if not present
-                workflowData.steps.forEach(step => {
-                    if (typeof step.completed === 'undefined') step.completed = false;
-                });
-
-                renderWorkflowPreview();
-                document.getElementById('workflowPreview').classList.remove('hidden');
-                document.getElementById('coachModeBtn').classList.remove('hidden');
-                document.getElementById('downloadButtons').classList.remove('hidden');
-                saveStateToLocalStorage();
-            } catch (e) {
-                alert("Error generating workflow: " + e.message + (e.raw_response ? `\nRaw: ${e.raw_response}`: ''));
-                console.error("Error in onGenerate:", e);
-            }
-            document.getElementById('loading').classList.add('hidden');
-        }
-
-        // --- RENDER WORKFLOW PREVIEW ---
-        function renderWorkflowPreview() {
-            const preview = document.getElementById('workflowPreview');
-            if (!workflowData || !workflowData.steps || !workflowData.steps.length) {
-                preview.innerHTML = "<em>No workflow generated yet.</em>";
-                return;
-            }
-
-            let html = `<h2>${markdownToHtml(workflowData.workflowTitle || 'Workflow')}</h2>`;
-            if (workflowData.summary) {
-                html += `<p style="font-style: italic;">${markdownToHtml(workflowData.summary)}</p>`;
-            }
-            if (workflowData.total_estimated_cost) {
-                html += `<p><strong>Total Estimated Cost:</strong> ${markdownToHtml(workflowData.total_estimated_cost)}</p>`;
-            }
-            html += `<hr style="margin: 20px 0;">`;
-
-            workflowData.steps.forEach((step, idx) => {
-                let toolsHtml = "N/A";
-                if (step.tools && step.tools.length > 0) {
-                    toolsHtml = "<ul>";
-                    step.tools.forEach(tool => {
-                        toolsHtml += `<li>${tool.url ? `<a href="${tool.url}" target="_blank" rel="noopener">${markdownToHtml(tool.name)}</a>` : markdownToHtml(tool.name)}</li>`;
-                    });
-                    toolsHtml += "</ul>";
-                } else if (typeof step.tools === 'string' && step.tools) { // Fallback for simple string
-                    toolsHtml = markdownToHtml(step.tools);
-                }
-                
-                const completedStatus = step.completed ? '<span class="step-status">✅ Completed</span>' : '<span class="step-status"></span>';
-
-                html += `<div class="step" id="step-preview-${idx}">
-                    <div class="step-title">Step ${step.step_number || (idx + 1)} ${completedStatus}</div>
-                    <div><strong>Action:</strong> <span class="editable" data-field="action" data-step-index="${idx}">${markdownToHtml(step.action || "")}</span></div>
-                    <div><strong>Tools:</strong> <span class="editable-tools" data-field="tools" data-step-index="${idx}">${toolsHtml}</span></div>
-                    <div><strong>Time Estimate:</strong> <span class="editable" data-field="time_estimate" data-step-index="${idx}">${markdownToHtml(step.time_estimate || "")}</span></div>
-                    <div><strong>Estimated Cost:</strong> <span class="editable" data-field="estimated_cost" data-step-index="${idx}">${markdownToHtml(step.estimated_cost || "")}</span></div>
-                    <div><strong>Alternative:</strong> <span class="editable" data-field="alternative" data-step-index="${idx}">${markdownToHtml(step.alternative || "")}</span></div>
-                    <button onclick="startEditStep(${idx})" class="edit-step-btn">Edit Step</button>
-                    <button onclick="saveStepChanges(${idx})" class="save-step-btn hidden">Save Changes</button>
-                </div>`;
             });
-            preview.innerHTML = html;
-        }
-        
-        // --- EDITING FUNCTIONALITY ---
-        function startEditStep(stepIndex) {
-            if (currentlyEditingStep !== null && currentlyEditingStep !== stepIndex) {
-                saveStepChanges(currentlyEditingStep); // Auto-save previous if any
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.detail?.error || `HTTP error! Status: ${res.status}`);
             }
-            currentlyEditingStep = stepIndex;
-
-            const stepDiv = document.getElementById(`step-preview-${stepIndex}`);
-            stepDiv.querySelectorAll('.editable').forEach(span => {
-                span.contentEditable = true;
-                // To edit, show raw text without HTML from markdown, then re-apply markdown on save
-                // For simplicity, current approach edits the HTML directly.
-                // A better way: store raw text, edit raw text, render with markdownToHtml.
-            });
+            const data = await res.json();
             
-            const toolsSpan = stepDiv.querySelector('.editable-tools');
-            const tools = workflowData.steps[stepIndex].tools;
-            let toolsText = "";
-            if (tools && tools.length > 0) {
-                toolsText = tools.map(t => `${t.name || ""}${t.url ? ` [${t.url}]` : ''}`).join('\n');
-            } else if (typeof tools === 'string') {
-                toolsText = tools; // if it was a simple string
-            }
-            toolsSpan.innerHTML = `<textarea id="tools-editor-${stepIndex}" rows="3" style="width:95%; margin-top:5px; font-size:14px;">${toolsText.replace(/<br\s*\/?>/gi, '\n')}</textarea>
-                                   <small>Format: Tool Name [https://url.com] (one per line). URL is optional.</small>`;
-
-            stepDiv.querySelector('.edit-step-btn').classList.add('hidden');
-            stepDiv.querySelector('.save-step-btn').classList.remove('hidden');
-        }
-
-        function saveStepChanges(stepIndex) {
-            if(stepIndex === null) return;
-            const stepDiv = document.getElementById(`step-preview-${stepIndex}`);
-            const step = workflowData.steps[stepIndex];
-
-            stepDiv.querySelectorAll('.editable[contenteditable="true"]').forEach(span => {
-                const field = span.dataset.field;
-                // Store as plain text if possible, or as HTML if complex formatting is needed
-                // For now, taking innerHTML as it might contain generated links/bolding.
-                // Ideally, should strip HTML for storage if markdown is used for rendering.
-                step[field] = span.innerHTML; 
-                span.contentEditable = false;
+            workflowData = data;
+            currentStepIndex = 0;
+            workflowData.steps.forEach(step => {
+                if (typeof step.completed === 'undefined') step.completed = false;
             });
 
-            const toolsTextarea = document.getElementById(`tools-editor-${stepIndex}`);
-            if (toolsTextarea) {
-                const lines = toolsTextarea.value.split('\n').filter(line => line.trim() !== '');
-                step.tools = lines.map(line => {
-                    const match = line.match(/^(.*?)\[(https?:\/\/[^\]]+)\]$/);
-                    if (match) return { name: match[1].trim(), url: match[2].trim() };
-                    // Regex for Name (URL without brackets)
-                    const simpleUrlMatch = line.match(/^(.*?)\s*(https?:\/\/\S+)$/);
-                    if (simpleUrlMatch && simpleUrlMatch[1].trim().length > 0) { // Ensure name is not empty
-                        return { name: simpleUrlMatch[1].trim(), url: simpleUrlMatch[2].trim() };
-                    }
-                    return { name: line.trim(), url: null };
-                });
-            }
-            
-            currentlyEditingStep = null;
-            saveStateToLocalStorage();
-            renderWorkflowPreview(); // Re-render the whole preview to reflect changes and apply markdown
-            // Scroll to the edited step
-            const editedStepElement = document.getElementById(`step-preview-${stepIndex}`);
-            if (editedStepElement) editedStepElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        // --- DOWNLOAD WORKFLOW PDF ---
-        function downloadWorkflowPDF() {
-            if (!workflowData || !workflowData.steps) { alert("No workflow to download."); return; }
-            const { jsPDF } = window.jspdf;
-            if (!jsPDF) { alert("PDF library (jsPDF) not loaded."); return; }
-            
-            const doc = new jsPDF();
-            let yPos = 15;
-            const PADDING = 15;
-            const PAGE_WIDTH = doc.internal.pageSize.getWidth();
-            const TEXT_WIDTH = PAGE_WIDTH - 2 * PADDING;
-
-            const addText = (text, size, style, spacing = 5) => {
-                if (yPos + spacing > doc.internal.pageSize.getHeight() - PADDING) { doc.addPage(); yPos = PADDING; }
-                doc.setFontSize(size).setFont(undefined, style);
-                const lines = doc.splitTextToSize(text, TEXT_WIDTH);
-                doc.text(lines, PADDING, yPos);
-                yPos += (lines.length * (size * 0.35)) + spacing; // Approximate line height factor
-            };
-            
-            addText(workflowData.workflowTitle || "Workflow Plan", 18, "bold", 8);
-            if (workflowData.summary) addText(`Summary: ${workflowData.summary.replace(/<[^>]*>?/gm, '')}`, 10, "italic", 7);
-            if (workflowData.total_estimated_cost) addText(`Total Estimated Cost: ${workflowData.total_estimated_cost.replace(/<[^>]*>?/gm, '')}`, 10, "normal", 10);
-
-            workflowData.steps.forEach((step, idx) => {
-                addText(`Step ${step.step_number || (idx + 1)}${step.completed ? ' (Completed)' : ''}`, 14, "bold", 6);
-                const cleanHtml = (htmlStr) => htmlStr ? htmlStr.replace(/<[^>]*>?/gm, '') : "N/A";
-
-                if (step.action) addText(`Action: ${cleanHtml(step.action)}`, 10, "normal");
-                if (step.tools && step.tools.length > 0) {
-                    let toolsText = "Tools:\n";
-                    step.tools.forEach(t => {
-                        toolsText += `  - ${cleanHtml(t.name)}${t.url ? ` (${t.url})` : ''}\n`;
-                    });
-                    addText(toolsText, 10, "normal");
-                } else if (typeof step.tools === 'string') {
-                     addText(`Tools: ${cleanHtml(step.tools)}`, 10, "normal");
-                } else {
-                     addText(`Tools: N/A`, 10, "normal");
-                }
-                if (step.time_estimate) addText(`Time Estimate: ${cleanHtml(step.time_estimate)}`, 10, "normal");
-                if (step.estimated_cost) addText(`Estimated Cost: ${cleanHtml(step.estimated_cost)}`, 10, "normal");
-                if (step.alternative) addText(`Alternative: ${cleanHtml(step.alternative)}`, 10, "normal");
-                yPos += 5; // Extra space
-            });
-            doc.save((workflowData.workflowTitle || "workflow").replace(/\s+/g, '_') + ".pdf");
-        }
-
-        // --- DOWNLOAD WORKFLOW JSON ---
-        function downloadWorkflowJSON() {
-            if (!workflowData) { alert("No workflow to download."); return; }
-            const jsonString = JSON.stringify(workflowData, null, 2);
-            const blob = new Blob([jsonString], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = (workflowData.workflowTitle || "workflow").replace(/\s+/g, '_') + ".json";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        // --- DOWNLOAD COACH CHAT PDF ---
-        function downloadCoachPDF() {
-            const { jsPDF } = window.jspdf;
-            if (!jsPDF) { alert("PDF library (jsPDF) not loaded."); return; }
-            const doc = new jsPDF();
-            let text = "Coach Chat Log\n\n";
-            const chatDiv = document.getElementById('chatMessages');
-            // Attempt to get cleaner text content
-            const messages = [];
-            chatDiv.childNodes.forEach(node => {
-                if (node.textContent) messages.push(node.textContent);
-            });
-            text += messages.join('\n') || chatDiv.innerText || "No chat messages.";
-            
-            const lines = doc.splitTextToSize(text, 180);
-            doc.text(lines, 10, 10);
-            doc.save("coach_advice.pdf");
-        }
-
-        // --- COACH MODE ---
-        function enterCoachMode() {
-            if (!workflowData || !workflowData.steps || workflowData.steps.length === 0) {
-                 alert("Please generate a workflow first."); return;
-            }
-            document.getElementById('inputSection').classList.add('hidden');
-            document.getElementById('workflowPreview').classList.add('hidden');
-            document.getElementById('coachModeBtn').classList.add('hidden');
-            document.getElementById('downloadButtons').classList.add('hidden');
-            document.getElementById('coachMode').classList.remove('hidden');
-            document.getElementById('clearStorageBtn')?.classList.add('hidden'); 
-            renderCurrentStep();
-            document.getElementById('chatMessages').innerHTML = ''; // Clear previous chat
-            document.getElementById('chatInput').value = '';
-        }
-        function exitCoachMode() {
-            document.getElementById('coachMode').classList.add('hidden');
-            document.getElementById('inputSection').classList.remove('hidden');
+            renderWorkflowPreview();
             document.getElementById('workflowPreview').classList.remove('hidden');
             document.getElementById('coachModeBtn').classList.remove('hidden');
             document.getElementById('downloadButtons').classList.remove('hidden');
-            document.getElementById('clearStorageBtn')?.classList.remove('hidden'); 
-            renderWorkflowPreview(); // Re-render to show any completion status updates
+            saveStateToLocalStorage();
+            manageClearStorageButton(); // <--- Called after successful generation and save
+
+        } catch (e) {
+            alert("Error generating workflow: " + e.message + (e.raw_response ? `\nRaw: ${e.raw_response}`: ''));
+            console.error("Error in onGenerate:", e);
         }
-        function renderCurrentStep() {
-            if (!workflowData || !workflowData.steps || !workflowData.steps[currentStepIndex]) {
-                document.getElementById('currentStep').innerHTML = "No step data available.";
-                return;
-            }
-            const step = workflowData.steps[currentStepIndex];
+        document.getElementById('loading').classList.add('hidden');
+    }
+
+    // --- RENDER WORKFLOW PREVIEW ---
+    function renderWorkflowPreview() {
+        const preview = document.getElementById('workflowPreview');
+        if (!workflowData || !workflowData.steps || !workflowData.steps.length) {
+            preview.innerHTML = "<em>No workflow generated yet.</em>";
+            return;
+        }
+
+        let html = `<h2>${markdownToHtml(workflowData.workflowTitle || 'Workflow')}</h2>`;
+        if (workflowData.summary) {
+            html += `<p style="font-style: italic;">${markdownToHtml(workflowData.summary)}</p>`;
+        }
+        if (workflowData.total_estimated_cost) {
+            html += `<p><strong>Total Estimated Cost:</strong> ${markdownToHtml(workflowData.total_estimated_cost)}</p>`;
+        }
+        html += `<hr style="margin: 20px 0;">`;
+
+        workflowData.steps.forEach((step, idx) => {
             let toolsHtml = "N/A";
             if (step.tools && step.tools.length > 0) {
                 toolsHtml = "<ul>";
@@ -538,161 +372,319 @@
                 });
                 toolsHtml += "</ul>";
             } else if (typeof step.tools === 'string' && step.tools) {
-                 toolsHtml = markdownToHtml(step.tools);
+                toolsHtml = markdownToHtml(step.tools);
             }
-            const completedText = step.completed ? '<span class="step-status">✅ Completed</span>' : '';
-            document.getElementById('currentStep').innerHTML = `
-                <div class="step-title">Step ${step.step_number || (currentStepIndex + 1)} ${completedText}</div>
-                <div><strong>Action:</strong> ${markdownToHtml(step.action || "")}</div>
-                <div><strong>Tools:</strong> ${toolsHtml}</div>
-                <div><strong>Time Estimate:</strong> ${markdownToHtml(step.time_estimate || "")}</div>
-                <div><strong>Estimated Cost:</strong> ${markdownToHtml(step.estimated_cost || "")}</div>
-                <div><strong>Alternative:</strong> ${markdownToHtml(step.alternative || "")}</div>
-            `;
-        }
-        function previousStep() {
-            if (currentStepIndex > 0) {
-                currentStepIndex--;
-                renderCurrentStep();
-                document.getElementById('chatMessages').innerHTML = '';
-                saveStateToLocalStorage();
-            }
-        }
-        function nextStep() {
-            if (workflowData && currentStepIndex < workflowData.steps.length - 1) {
-                currentStepIndex++;
-                renderCurrentStep();
-                document.getElementById('chatMessages').innerHTML = '';
-                saveStateToLocalStorage();
-            } else if (workflowData && currentStepIndex === workflowData.steps.length - 1) {
-                // Optionally, handle "end of workflow" in coach mode
-                alert("You've reached the end of the workflow!");
-            }
-        }
-        function completeCurrentStep() {
-            if (workflowData && workflowData.steps[currentStepIndex]) {
-                workflowData.steps[currentStepIndex].completed = !workflowData.steps[currentStepIndex].completed; // Toggle completion
-                renderCurrentStep(); // Re-render current step to show status change
-                saveStateToLocalStorage();
-                 // Optional: Automatically move to next step after marking complete
-                 // if (workflowData.steps[currentStepIndex].completed) nextStep();
-            }
-        }
-
-        // --- COACH CHAT ---
-        async function sendCoachMessage() {
-            var input = document.getElementById('chatInput');
-            var message = input.value.trim();
-            if (!message) return;
-            var chatMessages = document.getElementById('chatMessages');
-            chatMessages.innerHTML += `<div style="margin-bottom:8px; text-align: right; margin-left: 20%;"><strong>You:</strong> ${markdownToHtml(message)}</div>`;
-            input.value = '';
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-
-            if (!workflowData || !workflowData.steps[currentStepIndex]) {
-                chatMessages.innerHTML += '<div style="color:red;">Error: No current step context available.</div>';
-                return;
-            }
-            var step = workflowData.steps[currentStepIndex];
-            var context = 
-                `Goal: ${workflowData.workflowTitle || 'N/A'}\n` +
-                `Current Step (${step.step_number || currentStepIndex + 1}):\n` +
-                `Action: ${step.action || ""}\n` +
-                `Tools: ${(step.tools && step.tools.length > 0 ? step.tools.map(t => t.name + (t.url ? ` (${t.url})` : '')).join(', ') : (typeof step.tools === 'string' ? step.tools : "N/A"))}\n` +
-                `Time Estimate: ${step.time_estimate || ""}\n` +
-                `Estimated Cost: ${step.estimated_cost || ""}\n` +
-                `Alternative: ${step.alternative || ""}`;
             
-            const typingIndicator = document.createElement('div');
-            typingIndicator.style.color = '#888';
-            typingIndicator.innerHTML = 'Coach is typing...';
-            chatMessages.appendChild(typingIndicator);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            const completedStatus = step.completed ? '<span class="step-status">✅ Completed</span>' : '<span class="step-status"></span>';
 
-            try {
-                const res = await fetch(`${backendBaseUrl}/generate-workflow`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ user_message: message, step_context: context })
-                });
-                 if (!res.ok) {
-                    const errorData = await res.json();
-                    throw new Error(errorData.detail || `HTTP error! Status: ${res.status}`);
-                }
-                const data = await res.json();
-                typingIndicator.remove();
-                chatMessages.innerHTML += `<div style="margin-bottom:8px; text-align: left; margin-right: 20%;"><strong>Coach:</strong> ${markdownToHtml(data.reply)}</div>`;
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            } catch (e) {
-                typingIndicator.remove();
-                chatMessages.innerHTML += `<div style="color:red;">Error contacting AI coach: ${e.message}</div>`;
-                 chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-        }
-
-        // --- LOCAL STORAGE ---
-        function saveStateToLocalStorage() {
-            if (workflowData) {
-                localStorage.setItem('workflowApp_workflowData', JSON.stringify(workflowData));
-            }
-            localStorage.setItem('workflowApp_currentStepIndex', currentStepIndex.toString());
-        }
-
-        function loadStateFromLocalStorage() {
-            const savedWorkflowData = localStorage.getItem('workflowApp_workflowData');
-            if (savedWorkflowData) {
-                workflowData = JSON.parse(savedWorkflowData);
-                 // Ensure 'completed' status is initialized if loading from older state
-                if (workflowData && workflowData.steps) {
-                    workflowData.steps.forEach(step => {
-                        if (typeof step.completed === 'undefined') step.completed = false;
-                    });
-                }
-
-                currentStepIndex = parseInt(localStorage.getItem('workflowApp_currentStepIndex') || '0', 10);
-                
-                renderWorkflowPreview();
-                document.getElementById('workflowPreview').classList.remove('hidden');
-                document.getElementById('coachModeBtn').classList.remove('hidden');
-                document.getElementById('downloadButtons').classList.remove('hidden');
-                
-                if (!document.getElementById('clearStorageBtn')) {
-                    const clearBtn = document.createElement('button');
-                    clearBtn.id = 'clearStorageBtn';
-                    clearBtn.textContent = 'Clear Saved & Start New';
-                    clearBtn.onclick = () => {
-                        if (confirm("Are you sure you want to clear your saved workflow and start over?")) {
-                            localStorage.removeItem('workflowApp_workflowData');
-                            localStorage.removeItem('workflowApp_currentStepIndex');
-                            workflowData = null;
-                            currentStepIndex = 0;
-                            document.getElementById('workflowPreview').innerHTML = '';
-                            document.getElementById('workflowPreview').classList.add('hidden');
-                            document.getElementById('coachModeBtn').classList.add('hidden');
-                            document.getElementById('downloadButtons').classList.add('hidden');
-                            document.getElementById('coachMode').classList.add('hidden');
-                            document.getElementById('goal').value = '';
-                            document.getElementById('region').value = '';
-                            alert('Cleared saved workflow.');
-                            clearBtn.remove();
-                        }
-                    };
-                    document.getElementById('inputSection').appendChild(clearBtn);
-                }
-                 console.log("State loaded from local storage.");
-            }
-        }
-        // Add listener for Enter key in chatInput
-        document.getElementById('chatInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                sendCoachMessage();
-            }
+            html += `<div class="step" id="step-preview-${idx}">
+                <div class="step-title">Step ${step.step_number || (idx + 1)} ${completedStatus}</div>
+                <div><strong>Action:</strong> <span class="editable" data-field="action" data-step-index="${idx}">${markdownToHtml(step.action || "")}</span></div>
+                <div><strong>Tools:</strong> <span class="editable-tools" data-field="tools" data-step-index="${idx}">${toolsHtml}</span></div>
+                <div><strong>Time Estimate:</strong> <span class="editable" data-field="time_estimate" data-step-index="${idx}">${markdownToHtml(step.time_estimate || "")}</span></div>
+                <div><strong>Estimated Cost:</strong> <span class="editable" data-field="estimated_cost" data-step-index="${idx}">${markdownToHtml(step.estimated_cost || "")}</span></div>
+                <div><strong>Alternative:</strong> <span class="editable" data-field="alternative" data-step-index="${idx}">${markdownToHtml(step.alternative || "")}</span></div>
+                <button onclick="startEditStep(${idx})" class="edit-step-btn">Edit Step</button>
+                <button onclick="saveStepChanges(${idx})" class="save-step-btn hidden">Save Changes</button>
+            </div>`;
         });
-        
-        window.onload = () => {
-            loadStateFromLocalStorage();
-        };
+        preview.innerHTML = html;
+    }
+    
+    // --- EDITING FUNCTIONALITY ---
+    function startEditStep(stepIndex) {
+        if (currentlyEditingStep !== null && currentlyEditingStep !== stepIndex) {
+            saveStepChanges(currentlyEditingStep);
+        }
+        currentlyEditingStep = stepIndex;
+        const stepDiv = document.getElementById(`step-preview-${stepIndex}`);
+        stepDiv.querySelectorAll('.editable').forEach(span => {
+            span.contentEditable = true;
+        });
+        const toolsSpan = stepDiv.querySelector('.editable-tools');
+        const tools = workflowData.steps[stepIndex].tools;
+        let toolsText = "";
+        if (tools && tools.length > 0) {
+            toolsText = tools.map(t => `${t.name || ""}${t.url ? ` [${t.url}]` : ''}`).join('\n');
+        } else if (typeof tools === 'string') {
+            toolsText = tools;
+        }
+        toolsSpan.innerHTML = `<textarea id="tools-editor-${stepIndex}" rows="3" style="width:95%; margin-top:5px; font-size:14px;">${toolsText.replace(/<br\s*\/?>/gi, '\n')}</textarea>
+                               <small>Format: Tool Name [https://url.com] (one per line). URL is optional.</small>`;
+        stepDiv.querySelector('.edit-step-btn').classList.add('hidden');
+        stepDiv.querySelector('.save-step-btn').classList.remove('hidden');
+    }
 
-    </script>
-</body>
-</html>
+    function saveStepChanges(stepIndex) {
+        if(stepIndex === null) return;
+        const stepDiv = document.getElementById(`step-preview-${stepIndex}`);
+        const step = workflowData.steps[stepIndex];
+        stepDiv.querySelectorAll('.editable[contenteditable="true"]').forEach(span => {
+            const field = span.dataset.field;
+            step[field] = span.innerHTML; 
+            span.contentEditable = false;
+        });
+        const toolsTextarea = document.getElementById(`tools-editor-${stepIndex}`);
+        if (toolsTextarea) {
+            const lines = toolsTextarea.value.split('\n').filter(line => line.trim() !== '');
+            step.tools = lines.map(line => {
+                const match = line.match(/^(.*?)\[(https?:\/\/[^\]]+)\]$/);
+                if (match) return { name: match[1].trim(), url: match[2].trim() };
+                const simpleUrlMatch = line.match(/^(.*?)\s*(https?:\/\/\S+)$/);
+                if (simpleUrlMatch && simpleUrlMatch[1].trim().length > 0) {
+                    return { name: simpleUrlMatch[1].trim(), url: simpleUrlMatch[2].trim() };
+                }
+                return { name: line.trim(), url: null };
+            });
+        }
+        currentlyEditingStep = null;
+        saveStateToLocalStorage();
+        renderWorkflowPreview();
+        const editedStepElement = document.getElementById(`step-preview-${stepIndex}`);
+        if (editedStepElement) editedStepElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // --- DOWNLOAD WORKFLOW PDF ---
+    function downloadWorkflowPDF() {
+        if (!workflowData || !workflowData.steps) { alert("No workflow to download."); return; }
+        const { jsPDF } = window.jspdf;
+        if (!jsPDF) { alert("PDF library (jsPDF) not loaded."); return; }
+        const doc = new jsPDF();
+        let yPos = 15;
+        const PADDING = 15;
+        const PAGE_WIDTH = doc.internal.pageSize.getWidth();
+        const TEXT_WIDTH = PAGE_WIDTH - 2 * PADDING;
+        const addText = (text, size, style, spacing = 5) => {
+            if (yPos + spacing > doc.internal.pageSize.getHeight() - PADDING) { doc.addPage(); yPos = PADDING; }
+            doc.setFontSize(size).setFont(undefined, style);
+            const lines = doc.splitTextToSize(text, TEXT_WIDTH);
+            doc.text(lines, PADDING, yPos);
+            yPos += (lines.length * (size * 0.35)) + spacing;
+        };
+        addText(workflowData.workflowTitle || "Workflow Plan", 18, "bold", 8);
+        if (workflowData.summary) addText(`Summary: ${workflowData.summary.replace(/<[^>]*>?/gm, '')}`, 10, "italic", 7);
+        if (workflowData.total_estimated_cost) addText(`Total Estimated Cost: ${workflowData.total_estimated_cost.replace(/<[^>]*>?/gm, '')}`, 10, "normal", 10);
+        workflowData.steps.forEach((step, idx) => {
+            addText(`Step ${step.step_number || (idx + 1)}${step.completed ? ' (Completed)' : ''}`, 14, "bold", 6);
+            const cleanHtml = (htmlStr) => htmlStr ? htmlStr.replace(/<[^>]*>?/gm, '') : "N/A";
+            if (step.action) addText(`Action: ${cleanHtml(step.action)}`, 10, "normal");
+            if (step.tools && step.tools.length > 0) {
+                let toolsText = "Tools:\n";
+                step.tools.forEach(t => {
+                    toolsText += `  - ${cleanHtml(t.name)}${t.url ? ` (${t.url})` : ''}\n`;
+                });
+                addText(toolsText, 10, "normal");
+            } else if (typeof step.tools === 'string') {
+                 addText(`Tools: ${cleanHtml(step.tools)}`, 10, "normal");
+            } else {
+                 addText(`Tools: N/A`, 10, "normal");
+            }
+            if (step.time_estimate) addText(`Time Estimate: ${cleanHtml(step.time_estimate)}`, 10, "normal");
+            if (step.estimated_cost) addText(`Estimated Cost: ${cleanHtml(step.estimated_cost)}`, 10, "normal");
+            if (step.alternative) addText(`Alternative: ${cleanHtml(step.alternative)}`, 10, "normal");
+            yPos += 5;
+        });
+        doc.save((workflowData.workflowTitle || "workflow").replace(/\s+/g, '_') + ".pdf");
+    }
+
+    // --- DOWNLOAD WORKFLOW JSON ---
+    function downloadWorkflowJSON() {
+        if (!workflowData) { alert("No workflow to download."); return; }
+        const jsonString = JSON.stringify(workflowData, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (workflowData.workflowTitle || "workflow").replace(/\s+/g, '_') + ".json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // --- DOWNLOAD COACH CHAT PDF ---
+    function downloadCoachPDF() {
+        const { jsPDF } = window.jspdf;
+        if (!jsPDF) { alert("PDF library (jsPDF) not loaded."); return; }
+        const doc = new jsPDF();
+        let text = "Coach Chat Log\n\n";
+        const chatDiv = document.getElementById('chatMessages');
+        const messages = [];
+        chatDiv.childNodes.forEach(node => {
+            if (node.textContent) messages.push(node.textContent);
+        });
+        text += messages.join('\n') || chatDiv.innerText || "No chat messages.";
+        const lines = doc.splitTextToSize(text, 180);
+        doc.text(lines, 10, 10);
+        doc.save("coach_advice.pdf");
+    }
+
+    // --- COACH MODE ---
+    function enterCoachMode() {
+        if (!workflowData || !workflowData.steps || workflowData.steps.length === 0) {
+             alert("Please generate a workflow first."); return;
+        }
+        document.getElementById('inputSection').classList.add('hidden');
+        document.getElementById('workflowPreview').classList.add('hidden');
+        document.getElementById('coachModeBtn').classList.add('hidden');
+        document.getElementById('downloadButtons').classList.add('hidden');
+        document.getElementById('coachMode').classList.remove('hidden');
+        const clearBtn = document.getElementById('clearStorageBtn');
+        if(clearBtn) clearBtn.classList.add('hidden'); 
+        renderCurrentStep();
+        document.getElementById('chatMessages').innerHTML = '';
+        document.getElementById('chatInput').value = '';
+    }
+    function exitCoachMode() {
+        document.getElementById('coachMode').classList.add('hidden');
+        document.getElementById('inputSection').classList.remove('hidden');
+        document.getElementById('workflowPreview').classList.remove('hidden');
+        document.getElementById('coachModeBtn').classList.remove('hidden');
+        document.getElementById('downloadButtons').classList.remove('hidden');
+        const clearBtn = document.getElementById('clearStorageBtn');
+        if(clearBtn) clearBtn.classList.remove('hidden');
+        renderWorkflowPreview();
+    }
+    function renderCurrentStep() {
+        if (!workflowData || !workflowData.steps || !workflowData.steps[currentStepIndex]) {
+            document.getElementById('currentStep').innerHTML = "No step data available.";
+            return;
+        }
+        const step = workflowData.steps[currentStepIndex];
+        let toolsHtml = "N/A";
+        if (step.tools && step.tools.length > 0) {
+            toolsHtml = "<ul>";
+            step.tools.forEach(tool => {
+                toolsHtml += `<li>${tool.url ? `<a href="${tool.url}" target="_blank" rel="noopener">${markdownToHtml(tool.name)}</a>` : markdownToHtml(tool.name)}</li>`;
+            });
+            toolsHtml += "</ul>";
+        } else if (typeof step.tools === 'string' && step.tools) {
+             toolsHtml = markdownToHtml(step.tools);
+        }
+        const completedText = step.completed ? '<span class="step-status">✅ Completed</span>' : '';
+        document.getElementById('currentStep').innerHTML = `
+            <div class="step-title">Step ${step.step_number || (currentStepIndex + 1)} ${completedText}</div>
+            <div><strong>Action:</strong> ${markdownToHtml(step.action || "")}</div>
+            <div><strong>Tools:</strong> ${toolsHtml}</div>
+            <div><strong>Time Estimate:</strong> ${markdownToHtml(step.time_estimate || "")}</div>
+            <div><strong>Estimated Cost:</strong> ${markdownToHtml(step.estimated_cost || "")}</div>
+            <div><strong>Alternative:</strong> ${markdownToHtml(step.alternative || "")}</div>
+        `;
+    }
+    function previousStep() {
+        if (currentStepIndex > 0) {
+            currentStepIndex--;
+            renderCurrentStep();
+            document.getElementById('chatMessages').innerHTML = '';
+            saveStateToLocalStorage();
+        }
+    }
+    function nextStep() {
+        if (workflowData && currentStepIndex < workflowData.steps.length - 1) {
+            currentStepIndex++;
+            renderCurrentStep();
+            document.getElementById('chatMessages').innerHTML = '';
+            saveStateToLocalStorage();
+        } else if (workflowData && currentStepIndex === workflowData.steps.length - 1) {
+            alert("You've reached the end of the workflow!");
+        }
+    }
+    function completeCurrentStep() {
+        if (workflowData && workflowData.steps[currentStepIndex]) {
+            workflowData.steps[currentStepIndex].completed = !workflowData.steps[currentStepIndex].completed;
+            renderCurrentStep();
+            saveStateToLocalStorage();
+        }
+    }
+
+    // --- COACH CHAT ---
+    async function sendCoachMessage() {
+        var input = document.getElementById('chatInput');
+        var message = input.value.trim();
+        if (!message) return;
+        var chatMessages = document.getElementById('chatMessages');
+        chatMessages.innerHTML += `<div style="margin-bottom:8px; text-align: right; margin-left: 20%;"><strong>You:</strong> ${markdownToHtml(message)}</div>`;
+        input.value = '';
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        if (!workflowData || !workflowData.steps[currentStepIndex]) {
+            chatMessages.innerHTML += '<div style="color:red;">Error: No current step context available.</div>';
+            return;
+        }
+        var step = workflowData.steps[currentStepIndex];
+        var context = 
+            `Goal: ${workflowData.workflowTitle || 'N/A'}\n` +
+            `Current Step (${step.step_number || currentStepIndex + 1}):\n` +
+            `Action: ${step.action || ""}\n` +
+            `Tools: ${(step.tools && step.tools.length > 0 ? step.tools.map(t => t.name + (t.url ? ` (${t.url})` : '')).join(', ') : (typeof step.tools === 'string' ? step.tools : "N/A"))}\n` +
+            `Time Estimate: ${step.time_estimate || ""}\n` +
+            `Estimated Cost: ${step.estimated_cost || ""}\n` +
+            `Alternative: ${step.alternative || ""}`;
+        
+        const typingIndicator = document.createElement('div');
+        typingIndicator.style.color = '#888';
+        typingIndicator.innerHTML = 'Coach is typing...';
+        chatMessages.appendChild(typingIndicator);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        try {
+            const res = await fetch(`${backendBaseUrl}/coach-chat`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_message: message, step_context: context })
+            });
+             if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.detail || `HTTP error! Status: ${res.status}`);
+            }
+            const data = await res.json();
+            typingIndicator.remove();
+            chatMessages.innerHTML += `<div style="margin-bottom:8px; text-align: left; margin-right: 20%;"><strong>Coach:</strong> ${markdownToHtml(data.reply)}</div>`;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        } catch (e) {
+            typingIndicator.remove();
+            chatMessages.innerHTML += `<div style="color:red;">Error contacting AI coach: ${e.message}</div>`;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    }
+
+    // --- LOCAL STORAGE ---
+    function saveStateToLocalStorage() {
+        if (workflowData) {
+            localStorage.setItem('workflowApp_workflowData', JSON.stringify(workflowData));
+        }
+        localStorage.setItem('workflowApp_currentStepIndex', currentStepIndex.toString());
+        // manageClearStorageButton(); // Call here if any save action should update button state
+    }
+
+    function loadStateFromLocalStorage() {
+        const savedWorkflowData = localStorage.getItem('workflowApp_workflowData');
+        if (savedWorkflowData) {
+            workflowData = JSON.parse(savedWorkflowData);
+            if (workflowData && workflowData.steps) {
+                workflowData.steps.forEach(step => {
+                    if (typeof step.completed === 'undefined') step.completed = false;
+                });
+            }
+            currentStepIndex = parseInt(localStorage.getItem('workflowApp_currentStepIndex') || '0', 10);
+            renderWorkflowPreview();
+            document.getElementById('workflowPreview').classList.remove('hidden');
+            document.getElementById('coachModeBtn').classList.remove('hidden');
+            document.getElementById('downloadButtons').classList.remove('hidden');
+            console.log("State loaded from local storage.");
+        } else {
+            console.log("No saved state found in local storage.");
+        }
+        manageClearStorageButton(); // <--- Called after attempting to load state
+    }
+    
+    document.getElementById('chatInput').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            sendCoachMessage();
+        }
+    });
+    
+    window.onload = () => {
+        loadStateFromLocalStorage();
+    };
+</script>
