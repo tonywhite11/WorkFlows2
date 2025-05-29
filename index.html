@@ -276,7 +276,6 @@
             document.getElementById('coachMode').classList.add('hidden');
             
             try {
-                const backendBaseUrl = "https://workflows2.onrender.com";
                 const res = await fetch(`${backendBaseUrl}/generate-workflow`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
