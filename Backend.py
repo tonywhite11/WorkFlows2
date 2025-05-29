@@ -15,7 +15,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://work-flows2-tony.vercel.app/"], # Adjust for production
+    allow_origins=["work-flows2-tony-5q90702zb-tonywhite11s-projects.vercel.app"], # Adjust for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
