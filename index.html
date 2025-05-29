@@ -23,6 +23,7 @@
             border-radius: 18px;
             box-shadow: 0 8px 32px rgba(76, 81, 255, 0.08);
             padding: 36px 32px 32px 32px;
+            position: relative; /* For positioning the dark mode toggle */
         }
         .header {
             text-align: center;
@@ -39,7 +40,7 @@
             margin-bottom: 6px;
             display: block;
         }
-        input, select, textarea {
+        input, select, textarea { /* Select will be unused if role buttons are implemented */
             width: 100%;
             padding: 12px;
             margin-bottom: 18px;
@@ -49,21 +50,43 @@
             background: #f8fafc;
             box-sizing: border-box;
         }
+        
+        /* General Button Styles (Light Mode - Base) */
         button, .mode-toggle {
-            padding: 14px 28px;
+            padding: 12px 24px; /* Slightly adjusted default padding */
             border: none;
-            border-radius: 30px;
+            border-radius: 8px; /* Default to more professional radius */
             cursor: pointer;
             font-weight: 600;
             font-size: 16px;
-            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
             color: white;
             transition: all 0.3s ease;
             margin-top: 10px;
+            background: #4F46E5; /* Default to professional indigo */
         }
         button:hover, .mode-toggle:hover {
-            background: linear-gradient(135deg, #38a169 0%, #48bb78 100%);
+            background: #4338CA; /* Darker indigo on hover */
         }
+
+        /* Specific style for the "Generate Workflow" button */
+        #generateBtn {
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            background: #10B981; /* Refined professional green */
+            color: white;
+            border: none;
+            transition: background-color 0.3s ease;
+            background-image: none; /* Ensure no gradient */
+            width: 100%; /* Make it full width like inputs */
+            box-sizing: border-box;
+        }
+        #generateBtn:hover {
+            background: #059669;
+            background-image: none;
+        }
+
         .workflow-preview {
             background: #f8fafc;
             border-radius: 12px;
@@ -103,11 +126,11 @@
             margin-top: 18px;
             margin-bottom: 18px;
         }
-        .coach-btn {
+        .coach-btn { /* Coach mode specific buttons */
             padding: 10px 18px;
             border: none;
-            border-radius: 20px;
-            background: #48bb78;
+            border-radius: 8px; /* Updated radius */
+            background: #10B981; /* Refined Green */
             color: white;
             font-weight: 600;
             margin-right: 10px;
@@ -115,7 +138,7 @@
             transition: background 0.2s;
         }
         .coach-btn:hover {
-            background: #38a169;
+            background: #059669; /* Darker refined green */
         }
         #chatMessages {
             max-height: 180px;
@@ -128,7 +151,7 @@
             font-size: 15px;
         }
         #chatInput {
-            width: calc(70% - 5px); /* Adjusted for margin */
+            width: calc(70% - 5px);
             padding: 10px;
             border-radius: 8px;
             border: 1px solid #e2e8f0;
@@ -147,118 +170,226 @@
             padding: 5px;
             border: 1px dashed #3b82f6;
             outline: none;
-            display: inline-block; /* Ensures background covers content */
-            min-width: 50px; /* So empty fields are clickable */
+            display: inline-block;
+            min-width: 50px;
         }
         .edit-step-btn, .save-step-btn {
             padding: 6px 12px;
             font-size: 13px;
             margin-top: 8px;
-            border-radius: 15px;
+            border-radius: 6px; /* Sharper radius */
         }
-        .save-step-btn { background: #38a169; color:white; }
-        .edit-step-btn { background: #4299e1; color:white; }
+        .save-step-btn { background: #059669; color:white; } /* Using refined green */
+        .edit-step-btn { background: #4F46E5; color:white; } /* Using indigo */
 
         #downloadButtons button {
             font-size: 14px;
             padding: 10px 20px;
+            border-radius: 8px; /* Consistent radius */
+            background: #4F46E5; /* Indigo */
         }
+         #downloadButtons button:hover {
+            background: #4338CA; /* Darker Indigo */
+        }
+
         #clearStorageBtn {
-            background: #f56565;
+            background: #EF4444; /* Brighter, clearer red */
             color: white;
             font-size:14px;
             padding: 10px 20px;
+            border-radius: 8px;
         }
          #clearStorageBtn:hover {
-            background: #e53e3e;
+            background: #DC2626; /* Darker red */
+        }
+
+        /* === Role Buttons (Light Mode) === */
+        .role-buttons-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 24px; /* Increased margin for spacing */
+        }
+        .role-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            border: 1px solid #D1D5DB; /* Softer grey border */
+            border-radius: 8px; /* Reduced border-radius */
+            background-color: #F9FAFB; /* Very light grey, almost white */
+            color: #374151; /* Darker, more muted text */
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 0;
+            font-weight: 500;
+        }
+        .role-btn:hover {
+            background-color: #F3F4F6;
+            border-color: #9CA3AF;
+        }
+        .role-btn.selected {
+            background-color: #4F46E5; /* Professional indigo */
+            color: white;
+            border-color: #4F46E5;
+            font-weight: 600;
         }
 
         @media (max-width: 700px) {
             .container { padding: 20px 15px; margin: 20px 10px; }
             #chatInput { width: calc(60% - 5px); }
+            #darkModeToggle { top: 10px !important; right: 10px !important; } /* Adjust for smaller screens */
         }
 
-        /* Dark Mode Styles */
+        /* === Dark Mode Styles === */
         body.dark-mode {
-            background: linear-gradient(135deg, #2D3748 0%, #1A202C 100%); /* Darker gradient */
-            color: #E2E8F0; /* Light grey text */
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%); /* Darker, more neutral gradient */
+            color: #D1D5DB; /* Light grey text */
         }
         body.dark-mode .container {
-            background: #2D3748; /* Dark grey container */
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); /* Darker shadow */
-            color: #E2E8F0;
+            background: #1F2937; /* Dark grey container */
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); /* Darker shadow */
+            color: #D1D5DB;
         }
         body.dark-mode .header {
-            color: #90CDF4; /* Lighter blue for header */
+            color: #93C5FD; /* Lighter blue for header */
         }
         body.dark-mode .subtitle {
-            color: #A0AEC0; /* Lighter grey for subtitle */
+            color: #9CA3AF; /* Lighter grey for subtitle */
         }
         body.dark-mode label {
-            color: #CBD5E0; /* Slightly lighter grey for labels */
+            color: #D1D5DB;
         }
         body.dark-mode input, 
-        body.dark-mode select, 
+        body.dark-mode select, /* Will be unused if role buttons are used */
         body.dark-mode textarea {
-            background: #1A202C; /* Very dark input background */
-            border: 1px solid #4A5568; /* Grey border */
-            color: #E2E8F0; /* Light text in inputs */
+            background: #111827; /* Very dark input background */
+            border: 1px solid #374151; /* Grey border */
+            color: #D1D5DB; /* Light text in inputs */
         }
         body.dark-mode input::placeholder,
         body.dark-mode textarea::placeholder {
-            color: #718096; /* Muted placeholder text */
+            color: #6B7280; /* Muted placeholder text */
         }
-        /* Buttons in dark mode might need more specific overrides if gradients are an issue */
-        /* For now, let's assume the default button style with white text is acceptable, or invert */
-        /* You might want to adjust button gradients or use solid colors for dark mode */
-        /* Example: background: #4A5568; color: #E2E8F0; */
-        /* Keeping existing gradients for now, but text is white, which is good */
-         body.dark-mode #clearStorageBtn { /* Specific override for clear button */
-            background: #c53030; /* Darker red */
+        
+        /* General action buttons and mode toggles in Dark Mode */
+        body.dark-mode button, 
+        body.dark-mode .mode-toggle {
+            background: #374151; /* Solid dark grey */
+            color: #D1D5DB; /* Light text */
+            background-image: none; 
+        }
+        body.dark-mode button:hover,
+        body.dark-mode .mode-toggle:hover {
+            background: #4B5563; /* Lighter grey on hover */
+        }
+
+        /* Specific style for the "Generate Workflow" button in dark mode */
+        body.dark-mode #generateBtn {
+            background: #10B981; /* Refined Green */
             color: white;
+            background-image: none;
+        }
+        body.dark-mode #generateBtn:hover {
+            background: #059669; /* Darker refined green */
+        }
+
+        /* Dark mode Download buttons */
+        body.dark-mode #downloadButtons button {
+            background: #4F46E5; /* Indigo */
+            color: white;
+            background-image: none;
+        }
+        body.dark-mode #downloadButtons button:hover {
+            background: #4338CA; /* Darker Indigo */
+        }
+        
+        /* Coach Mode action buttons */
+        body.dark-mode .coach-btn {
+            background: #059669; /* Darker Solid refined green */
+            color: white;
+            background-image: none;
+        }
+        body.dark-mode .coach-btn:hover {
+            background: #047857; /* Even darker green */
+        }
+        body.dark-mode .coach-mode button[onclick="downloadCoachPDF()"] { 
+            background: #4B5563; /* Neutral dark grey */
+            color: #D1D5DB;
+        }
+         body.dark-mode .coach-mode button[onclick="downloadCoachPDF()"]:hover {
+            background: #374151; /* Darker grey */
+        }
+        
+        body.dark-mode #clearStorageBtn {
+            background: #DC2626; /* Solid darker red */
+            color: white;
+            background-image: none; 
         }
         body.dark-mode #clearStorageBtn:hover {
-            background: #9b2c2c;
+            background: #B91C1C; /* Even darker red */
         }
+
         body.dark-mode .workflow-preview {
-            background: #1A202C; /* Dark background for preview */
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            color: #CBD5E0;
+            background: #111827; /* Very dark background for preview */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            color: #9CA3AF; /* Lighter text */
         }
         body.dark-mode .step {
-            border-bottom: 1px solid #4A5568; /* Darker border for steps */
+            border-bottom: 1px solid #374151; /* Darker border for steps */
         }
         body.dark-mode .step-title {
-            color: #90CDF4; /* Lighter blue for step titles */
+            color: #93C5FD; /* Lighter blue for step titles */
         }
         body.dark-mode .coach-mode {
-            background: #252E3C; /* Slightly lighter dark for coach mode */
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            color: #CBD5E0;
+            background: #1F2937; /* Darker for coach mode */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            color: #9CA3AF;
         }
-        /* Removed empty ruleset for body.dark-mode .coach-btn as it is not needed */
         body.dark-mode #chatMessages {
-            background: #1A202C;
-            border: 1px solid #4A5568;
-            color: #E2E8F0;
+            background: #111827;
+            border: 1px solid #374151;
+            color: #D1D5DB;
         }
         body.dark-mode #chatInput {
-            background: #2D3748;
-            border: 1px solid #4A5568;
-            color: #E2E8F0;
+            background: #1F2937; /* Match container dark */
+            border: 1px solid #374151;
+            color: #D1D5DB;
         }
         body.dark-mode .loading {
-            color: #90CDF4;
+            color: #93C5FD;
         }
         body.dark-mode .editable[contenteditable="true"] {
             background-color: #374151; /* Darker highlight for editing */
             border: 1px dashed #60A5FA;
         }
+        
         /* Dark mode toggle button itself */
-        body.dark-mode #darkModeToggle {
-            background: #4A5568;
-            color: #E2E8F0;
-            border: 1px solid #718096;
+        /* Uses the general dark mode button style by default, which is fine */
+        /* If specific override needed: */
+        /* body.dark-mode #darkModeToggle {
+            background: #4B5563;
+            color: #D1D5DB;
+            border: 1px solid #6B7280;
+        } */
+
+        /* === Dark Mode - Role Buttons === */
+        body.dark-mode .role-btn {
+            background-color: #374151; /* Dark grey background */
+            border: 1px solid #4B5563; /* Slightly lighter border */
+            color: #D1D5DB; /* Light grey text */
+            font-weight: 500;
+        }
+        body.dark-mode .role-btn:hover {
+            background-color: #4B5563; /* Lighter on hover */
+            border-color: #6B7280;
+        }
+        body.dark-mode .role-btn.selected {
+            background-color: #6366F1; /* Brighter indigo for dark mode selection */
+            color: white; 
+            border-color: #6366F1;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -273,26 +404,12 @@
             <label for="goal">What's your goal?</label>
             <textarea id="goal" rows="2" placeholder="e.g., Launch an Etsy store"></textarea>
             <label for="role">Select Role</label>
-            <select id="role">
-                <option>Generalist</option>
-                <option>Developer</option>
-                <option>Designer</option>
-                <option>Marketer</option>
-                <option>Coach</option>
-                <option>Entrepreneur</option>
-                <option>Student</option>
-                <option>Researcher</option>
-                <option>Content Creator</option>
-                <option>Event Planner</option>
-                <option>HR Specialist</option>
-                <option>Teacher</option>
-                <option>Consultant</option>
-                <option>Healthcare Professional</option>
-                <option>Engineer</option>
-                <option>Writer</option>
-                <option>Salesperson</option>
-                <option>Financial Advisor</option>
-            </select>
+            <label for="roleSelection">Select Your Role</label>
+            <div id="roleSelection" class="role-buttons-container">
+                <!-- Buttons will be generated by JavaScript, or you can hardcode them -->
+                <!-- Example of one button if hardcoding: -->
+                <!-- <button type="button" class="role-btn" data-role="Generalist">🎯 Generalist</button> -->
+            </div>
             <label for="region">Your location or region (optional)</label>
             <input id="region" type="text" placeholder="e.g., United States, UK, India">
             <button onclick="onGenerate()" id="generateBtn">🚀 Generate Workflow</button>
@@ -331,8 +448,52 @@
     let workflowData = null; // { workflowTitle: "...", steps: [...], total_estimated_cost: "...", summary: "..." }
     let currentStepIndex = 0;
     let currentlyEditingStep = null;
+    let selectedRole = 'Generalist'; // Default role
     const backendBaseUrl = "https://workflows2.onrender.com"; // Your Render backend URL
     // const backendBaseUrl = "http://localhost:8000"; // Uncomment for local development
+
+    const roles = [ // Define your roles, optionally with icons
+        { name: 'Generalist', icon: '🎯' }, { name: 'Developer', icon: '💻' },
+        { name: 'Designer', icon: '🎨' }, { name: 'Marketer', icon: '📈' },
+        { name: 'Coach', icon: '🧭' }, { name: 'Entrepreneur', icon: '🚀' },
+        { name: 'Student', icon: '📚' }, { name: 'Researcher', icon: '🔬' },
+        { name: 'Content Creator', icon: '🎬' }, { name: 'Event Planner', icon: '🎉' },
+        { name: 'HR Specialist', icon: '👥' }, { name: 'Teacher', icon: '🧑‍🏫' },
+        { name: 'Consultant', icon: '💼' }, { name: 'Healthcare Professional', icon: '⚕️' },
+        { name: 'Engineer', icon: '⚙️' }, { name: 'Writer', icon: '✍️' },
+        { name: 'Salesperson', icon: '🤝' }, { name: 'Financial Advisor', icon: '💰' }
+    ];
+
+    // Function to create and render role buttons
+    function renderRoleButtons() {
+        const container = document.getElementById('roleSelection');
+        if (!container) return;
+        container.innerHTML = ''; // Clear existing buttons
+
+        roles.forEach(role => {
+            const button = document.createElement('button');
+            button.type = 'button'; // Important to prevent form submission if inside a form
+            button.classList.add('role-btn');
+            button.dataset.role = role.name; // Store role name in data attribute
+            button.innerHTML = `${role.icon ? `<span>${role.icon}</span>` : ''} ${role.name}`;
+
+            if (role.name === selectedRole) {
+                button.classList.add('selected');
+            }
+
+            button.addEventListener('click', function() {
+                // Remove 'selected' class from previously selected button
+                const currentSelected = container.querySelector('.role-btn.selected');
+                if (currentSelected) {
+                    currentSelected.classList.remove('selected');
+                }
+                // Add 'selected' class to the clicked button
+                this.classList.add('selected');
+                selectedRole = this.dataset.role; // Update the global selectedRole variable
+            });
+            container.appendChild(button);
+        });
+    }
 
     // --- DARK MODE TOGGLE ---
     const darkModeToggle = document.getElementById('darkModeToggle');
@@ -418,7 +579,8 @@
     // --- GENERATE WORKFLOW ---
     async function onGenerate() {
         const goal = document.getElementById('goal').value.trim();
-        const role = document.getElementById('role').value;
+        // const role = document.getElementById('role').value; // OLD WAY - REMOVE THIS
+        const role = selectedRole; // NEW WAY - Use the global variable
         const region = document.getElementById('region').value.trim();
         if (!goal) {
             alert("Please enter your goal.");
@@ -801,6 +963,8 @@
     });
     
     window.onload = () => {
+        applySavedTheme();
+        renderRoleButtons(); // Render role buttons on load
         loadStateFromLocalStorage();
     };
 </script>
