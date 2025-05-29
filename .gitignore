@@ -1,0 +1,64 @@
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+out/
+.tmp/
+.temp/
+.cache/
+.next/
+.vercel/
+.netlify/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Dependency directories
+bower_components/
+jspm_packages/
+
+# Misc
+*.local
+*.log
+*.tgz
+
+# Test output
+test-output/
+reports/
+
+# SvelteKit
+.svelte-kit/
+
+# Storybook
+.storybook-out/
+storybook-static/
+
+# Python virtualenv (if any)
+venv/
+ENV/
+env/
