@@ -13,9 +13,9 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://work-flows2.vercel.app",              # your Vercel frontend
-        "https://workflows2-backend.onrender.com",     # your actual backend domain
-        "http://localhost:3000"                        # for local testing
+        "https://work-flows2-31c72zmm9-tonywhite11s-projects.vercel.app",  # ✅ Vercel deploy
+        "https://workflows2-backend.onrender.com",                         # ✅ Backend domain
+        "http://localhost:3000"                                            # ✅ Local dev
     ],
     allow_credentials=True,
     allow_methods=["*"],
